@@ -1,4 +1,3 @@
-version: "3.9"
 services:
   central-server:
     build: ./server
@@ -106,8 +105,8 @@ networks:
     name: hmi_proxy
     ipam:
       config:
-        - subnet: 127.27.0.0/24
-          gateway: 127.27.0.1
+        - subnet: 172.27.0.0/24
+          gateway: 172.27.0.1
     
     
           
