@@ -37,6 +37,7 @@ tot_counter = 0
 
 def main():
     def packet_handler(packet):
+        print('packet received')
         full_payload = b''
         is_verified = True
         
@@ -151,7 +152,17 @@ def main():
         if is_verified:
             print("\nSending the following packet: ")
             pkt.show2()
-            send(pkt)
+            if len(pkt) > 1400:
+                # Se il pacchetto è più grande dell'MTU, frammentalo
+                print(f"Pacchetto troppo grande ({len(pkt)} bytes), frammentato.")
+                frags = fragment(pkt, fragsize=1400)  # 28 byte per l'header IP e ICMP
+
+                # Invia ogni frammento separatamente
+                for frag in frags:
+                    send(frag)
+            else:
+                send(pkt)
+        
     
       
     print("Starting...")

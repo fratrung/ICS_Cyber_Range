@@ -48,7 +48,7 @@ def decrypt_aes(encrypted_data):
 
 def main():
     def packet_handler(packet):
-        
+        print('packet received')
         full_payload = b''
         is_verified = True
         
@@ -56,6 +56,7 @@ def main():
         pkt.show()
         src_ip = pkt[IP].src
         dst_ip = pkt[IP].dst
+        
         # Initialize the fragment payload list for the source IP if it doesn't exist
         if src_ip not in fragments_payload or fragments_payload[src_ip] == []:
             fragments_payload[src_ip] = []
@@ -111,7 +112,7 @@ def main():
                     del pkt[TCP].chksum
                     del pkt[IP].len
                     print("Sending packet to PLC")
-                    pkt.show2()
+                    
                         
             # If the packet is addressed to the HMI and has a SYN
             elif pkt[TCP].flags & 2 and pkt[IP].dst != "172.29.0.5":
@@ -121,7 +122,7 @@ def main():
                 del pkt[IP].chksum
                 del pkt[TCP].chksum
                 del pkt[IP].len
-                pkt.show2()
+                
                 
             # If the packet is addressed to the HMI
             elif pkt[IP].dst != "172.29.0.5" and pkt.haslayer(Raw):
@@ -132,7 +133,7 @@ def main():
                 del pkt[IP].chksum
                 del pkt[TCP].chksum
                 del pkt[IP].len
-                pkt.show2()
+                
                 # packet.set_payload(bytes(pkt))
                 print("Raw data encrypted")
                 
@@ -146,14 +147,26 @@ def main():
                     del pkt[IP].chksum
                     del pkt[TCP].chksum
                     del pkt[IP].len
-                    pkt.show2()
+                    
                 else:
                     print("Invalid packet")
                     is_verified = False
         
         packet.drop()
+        
         if is_verified:
-            send(pkt)
+            print("Pacchetto inviato:")
+            pkt.show2()
+            if len(pkt) > 1400:
+                # Se il pacchetto è più grande dell'MTU, frammentalo
+                print(f"Pacchetto troppo grande ({len(pkt)} bytes), frammentato.")
+                frags = fragment(pkt, fragsize=1400)  # 28 byte per l'header IP e ICMP
+
+                # Invia ogni frammento separatamente
+                for frag in frags:
+                    send(frag)
+            else:
+                send(pkt)
     
     print("Starting...")
     nfqueue = NetfilterQueue()

@@ -26,4 +26,6 @@ iptables -P INPUT ACCEPT
 iptables -P FORWARD ACCEPT
 iptables -P OUTPUT ACCEPT
 
+
+
 echo "All iptables rules have been cleared and default policies set to ACCEPT."
