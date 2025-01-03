@@ -1,0 +1,6 @@
+[submodule "TestbedGenerator/templates/hmi_proxy/python-netfilterqueue"]
+	path = TestbedGenerator/templates/hmi_proxy/python-netfilterqueue
+	url = https://github.com/manuelFabiano/python-netfilterqueue
+[submodule "TestbedGenerator/templates/plc_proxy/python-netfilterqueue"]
+	path = TestbedGenerator/templates/plc_proxy/python-netfilterqueue
+	url = https://github.com/manuelFabiano/python-netfilterqueue
