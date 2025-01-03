@@ -1,0 +1,4 @@
+flask
+cryptography
+pycryptodome == 3.14.1
+numpy
