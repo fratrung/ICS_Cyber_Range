@@ -12,7 +12,7 @@ services:
       network1:
         ipv4_address: 172.29.0.2
     ports:
-    - 5000:5000
+    - 5007:5007
   hmi1:
     build: ./hmi
     cap_add:

@@ -22,7 +22,7 @@ def generate_compose(num_hmi, num_plc):
         'services': {
             'central-server': {
                 'build': './server',
-                'ports': ['5000:5000'],
+                'ports': ['5007:5007'],
                 'networks': {
                     'network1': {
                         'ipv4_address': '172.29.0.2'
@@ -86,6 +86,7 @@ def generate_compose(num_hmi, num_plc):
                 ]) +
                 f"cd scripts && " +
                 f"pip install ./python-netfilterqueue &&" +
+                f"pip install jwt" +
                 f"tail -f /dev/null\""
             )
         }
@@ -146,6 +147,7 @@ def generate_compose(num_hmi, num_plc):
                 ]) +
                 f"cd scripts && " +
                 f"pip install ./python-netfilterqueue &&" +
+                f"pip install jwt" +
                 f"tail -f /dev/null\""
             )
         }

@@ -10,9 +10,11 @@ import json
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
-from dilithium import Dilithium2
+from did_iiot_dht.AuthKademlia.kademlia.crypto.dilithium.src.dilithium_py.dilithium import Dilithium2
 sys.path.append(os.path.join(os.path.dirname(__file__), 'kyberpy'))
 from kyberpy import kyber 
+
+import jwt.utils as jwt_utils
 
 # Function to generate a timestamp
 def generate_timestamp():
@@ -69,29 +71,44 @@ def decrypt_message(encrypted_message, symmetric_key):
         return secret_text, True
     
 
-def compute_symmetric_key(payload, kyber_private_key):
+def compute_symmetric_key(payload, kyber_private_key,auth_node_dilithium_public_key,sender_dilithium_public_key):
     # Split the payload: the first 768 bytes are 'c', the next 2420 bytes are the signature, and the rest is the certificate
     c = payload[:768]             # The first 768 bytes
     signature = payload[768:3188]     # The next 2420 bytes (768 + 2420 = 3188)
-    certificate = payload[3188:]  # The remaining bytes   
-    
-    # Convert the certificate to JSON
-    certificate_json = json.loads(certificate)
-    # Extract the public key from the certificate
-    sender_dilithium_key = certificate_json["dilithium_public_key"]
-    # Verify the certificate
-    cert_signature = bytes.fromhex(certificate_json.pop("signature"))
-    issuer_dilithium_public_key = bytes.fromhex(certificate_json["issuer_dilithium_public_key"])
-    certificate_no_sig = json.dumps(certificate_json, sort_keys=True).encode('utf-8')
-    if not Dilithium2.verify(issuer_dilithium_public_key, certificate_no_sig, cert_signature):
+    #certificate = payload[3188:]  # The remaining bytes   
+
+    #inizio codice modificato
+    jwt_verifiable_credential = payload[3188:]
+    jwt_verifiable_credential_json = json.load(jwt_verifiable_credential)
+    jwt_array = jwt_verifiable_credential_json.split(".")
+    sender_verifiable_credential = f"{jwt_array[0]}.{jwt_array[1]}".encode('utf-8')
+    jwt_signature = jwt_utils.base64url_decode(jwt_array[2].encode())
+    if not Dilithium2.verify(auth_node_dilithium_public_key, sender_verifiable_credential, jwt_signature):
         print("Certificate verification failed.")
         return None, None
-    
-    # Verify the signature of 'c'
-    if not Dilithium2.verify(bytes.fromhex(sender_dilithium_key), c, signature):
+    if not Dilithium2.verify(sender_dilithium_public_key,c,signature):
         print("Signature verification failed.")
         return None, None
+    symmetric_key = kyber.Kyber512.dec(c,kyber_private_key)
+    return symmetric_key, sender_dilithium_public_key
+
+    # Convert the certificate to JSON
+    #certificate_json = json.loads(certificate)
+    # Extract the public key from the certificate
+    #sender_dilithium_key = certificate_json["dilithium_public_key"]
+    # Verify the certificate
+    #cert_signature = bytes.fromhex(certificate_json.pop("signature"))
+    #issuer_dilithium_public_key = bytes.fromhex(certificate_json["issuer_dilithium_public_key"])
+    #certificate_no_sig = json.dumps(certificate_json, sort_keys=True).encode('utf-8')
+    #if not Dilithium2.verify(issuer_dilithium_public_key, certificate_no_sig, cert_signature):
+    #    print("Certificate verification failed.")
+    #    return None, None
+    
+    # Verify the signature of 'c'
+    #if not Dilithium2.verify(bytes.fromhex(sender_dilithium_key), c, signature):
+    #    print("Signature verification failed.")
+    #    return None, None
     
     # Decrypt 'c' with my private key
-    symmetric_key = kyber.Kyber512.dec(c, kyber_private_key)
-    return symmetric_key, sender_dilithium_key
+    #symmetric_key = kyber.Kyber512.dec(c, kyber_private_key)
+    #return symmetric_key, sender_dilithium_key

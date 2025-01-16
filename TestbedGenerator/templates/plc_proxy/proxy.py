@@ -10,9 +10,16 @@ import crypto
 import json
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
-from dilithium import Dilithium2
+from did_iiot_dht.AuthKademlia.kademlia.crypto.dilithium.src.dilithium_py.dilithium.default_parameters import Dilithium2
 sys.path.append(os.path.join(os.path.dirname(__file__), 'kyberpy'))
 from kyberpy import kyber 
+
+sys.path.append(os.path.join(os.path.dirname(__file__), 'did_iiot_dht'))
+from did_iiot_dht.dht_handler import DHTHandler
+import did_iiot_dht.utils as dht_utils 
+import jwt.utils as jwt_utils
+import asyncio
+import time
 
 iptablesr1 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
 iptablesr2 = "iptables -A FORWARD -i eth0 -j NFQUEUE --queue-num 0"
@@ -21,22 +28,56 @@ os.system(iptablesr2)
 
 device_ip = os.getenv('DEVICE_IP')
 
+#Parte aggiunta
+dht_handler = DHTHandler()
+
+loop = asyncio.new_event_loop()
+asyncio.set_event_loop(loop)
+
+loop.run_until_complete(dht_handler.start_dht_service(5000))
+loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.8",5000),("172.29.0.9",5000)])) #da modificare 
+
+dht_handler.generate_did_iiot(id_service="main-service",service_type="PLC",service_endpoint=device_ip)
+loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+time.sleep(50)
+loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
+print("VC ottenuto per il proxy del PLC")
+
+
+#fine parte aggiunta 
+
 keys = dict()
 fragments_payload = dict()
 handshake_payload = dict()
 first_packet = dict()
 certificates = dict()
 
-with open("kyber_private_key.txt", "rb") as f:
-    kyber_private_key = f.read()
 
-with open("dilithium_private_key.txt", "rb") as f:
-    dilithium_private_key = f.read()
+kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k0")
+dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
+
+with open("vc.json","r") as f:
+    proxy_verifiable_credential = json.load(f.read())
+
+#with open("kyber_private_key.txt", "rb") as f:
+#    kyber_private_key = f.read()
+
+#with open("dilithium_private_key.txt", "rb") as f:
+#    dilithium_private_key = f.read()
     
-with open("certificate", "r") as f:
-    proxy_certificate = json.loads(f.read())
-    
-issuer_dilithium_public_key = proxy_certificate["issuer_dilithium_public_key"]
+#with open("certificate", "r") as f:
+#    proxy_certificate = json.loads(f.read())
+
+
+
+#issuer_dilithium_public_key = proxy_certificate["issuer_dilithium_public_key"]
+
+authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="did:iiot:vc-issuer"))
+authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
+auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
+var_method = auth_node_did_document['verificationMethod'][0]
+auth_node_jwk_pub_key = var_method['publicKeyJwk']['x']
+auth_node_dilithium_public_key = dht_utils.base64_decode_publickey(auth_node_jwk_pub_key)
 
 def encrypt_aes(data):
     cipher = AES.new(AES_KEY, AES.MODE_ECB)
@@ -95,20 +136,58 @@ def main():
             # If the packet is addressed to the PLC and has a SYN
             if pkt[TCP].flags & 2 and pkt[IP].dst == device_ip:
                 # Verify the certificate signature
-                certificate_json = json.loads(full_payload)
-                signature = bytes.fromhex(certificate_json.pop("signature"))
-                certificate = json.dumps(certificate_json, sort_keys=True).encode('utf-8')
-                if Dilithium2.verify(bytes.fromhex(issuer_dilithium_public_key), certificate, signature):
+                #certificate_json = json.loads(full_payload)
+                #signature = bytes.fromhex(certificate_json.pop("signature"))
+                #certificate = json.dumps(certificate_json, sort_keys=True).encode('utf-8')
+                #if Dilithium2.verify(bytes.fromhex(issuer_dilithium_public_key), certificate, signature):
+                #    print("Certificate verified successfully.")
+                #    certificates[src_ip] = certificate_json["dilithium_public_key"]
+                #    is_verified = True
+                #    other_proxy_kyber_public_key = bytes.fromhex(certificate_json["kyber_public_key"])
+                #    c, key = kyber.Kyber512.enc(other_proxy_kyber_public_key)  # c length = 768
+                #    keys[src_ip] = key
+                    # Sign c
+                #    c_sign = Dilithium2.sign(dilithium_private_key, c)  # sign length = 2420
+                    # Insert c and the certificate into the packet payload
+                    #handshake_payload[src_ip] = c + c_sign + json.dumps(proxy_certificate, sort_keys=True).encode('utf-8')
+
+                #Verify the Verifiable Credential signature
+                jwt_verifiable_credential_json = json.load(full_payload)
+                jwt_array = jwt_verifiable_credential_json.split(".")
+                m = f"{jwt_array[0]}.{jwt_array[1]}".encode('utf-8')
+                signature_for_validation = jwt_utils.base64url_decode(jwt_array[2].encode())
+                if dht_handler.dilith_key_manager.verify_signature(auth_node_dilithium_public_key,m,signature_for_validation,2):
                     print("Certificate verified successfully.")
-                    certificates[src_ip] = certificate_json["dilithium_public_key"]
+                    
+                    vc_payload = json.loads(jwt_utils.base64url_decode(jwt_array[1].decode('urf-8')))
+                    did = vc_payload['sub']
+                    did_suffix = dht_utils.extract_did_suffix(did)
+                    
+                    did_document_record_sender = loop.run_until_complete(dht_handler.get_record_from_DHT(key=did_suffix))
+                    did_document_raw_sender = did_document_record_sender[12+2420:]
+                    did_document_sender = dht_utils.decode_did_document(did_document_raw_sender)
+                    
+                    #Retrieve sender Dilithium public key from did document
+                    ver_method_dilithium_sender = did_document_sender['verificationMethod'][0]
+                    sender_dilithium_jwk_pub_key = ver_method_dilithium_sender['publicKeyJwk']['x']
+                    sender_dilithium_public_key = dht_utils.base64_decode_publickey(sender_dilithium_jwk_pub_key)
+                    
+                    # Retrieve sender Kyber public key from did document
+                    ver_method_kyber_sender = did_document_sender['verificationMethod'][1]
+                    sender_kyber_jwk_pub_key = ver_method_kyber_sender['publicKeyJwk']['x']
+                    sender_kyber_public_key = dht_utils.base64_decode_publickey(sender_kyber_jwk_pub_key)
+                    
+                    certificates[src_ip] = sender_dilithium_public_key
                     is_verified = True
-                    other_proxy_kyber_public_key = bytes.fromhex(certificate_json["kyber_public_key"])
-                    c, key = kyber.Kyber512.enc(other_proxy_kyber_public_key)  # c length = 768
+                    c, key = kyber.Kyber512.enc(sender_kyber_public_key)
                     keys[src_ip] = key
                     # Sign c
-                    c_sign = Dilithium2.sign(dilithium_private_key, c)  # sign length = 2420
-                    # Insert c and the certificate into the packet payload
-                    handshake_payload[src_ip] = c + c_sign + json.dumps(proxy_certificate, sort_keys=True).encode('utf-8')
+                    c_sign = Dilithium2.sign(dht_handler.dilith_key_manager.get_private_key("k0"),c)
+                    # Insert c and the Verifiable Credential into the packet payload
+                    handshake_payload[src_ip] = c + c_sign + json.dumps(proxy_verifiable_credential,sort_keys=True).encode('utf-8')
+                    
+
+
                     pkt[TCP].remove_payload()
                     del pkt[IP].chksum
                     del pkt[TCP].chksum
