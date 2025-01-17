@@ -19,6 +19,9 @@ import did_iiot_dht.utils as dht_utils
 import jwt.utils as jwt_utils
 import asyncio
 import time
+import multiprocessing
+import socket
+from network_discover import load_peers
 
 iptablesr1 = "iptables -A FORWARD -i eth0 -j NFQUEUE --queue-num 0"
 iptablesr2 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
@@ -26,17 +29,19 @@ os.system(iptablesr1)
 os.system(iptablesr2)
 
 device_ip = os.getenv('DEVICE_IP')
+peers = load_peers()
+
+time.sleep(20)
 
 dht_handler = DHTHandler()
 loop = asyncio.new_event_loop()
 asyncio.set_event_loop(loop)
 loop.run_until_complete(dht_handler.start_dht_service(5000))
-loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.102",5000)]))
-# da vedere dove fare il bootstrap
+loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
 
 dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
 loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-time.sleep(50)
+
 loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
 
 print("VC ottenute dal proxy dell'HMI")
@@ -231,6 +236,39 @@ def main():
         os.system("iptables -D FORWARD -i eth1 -j NFQUEUE --queue-num 0")
         os.system("iptables -D FORWARD -i eth0 -j NFQUEUE --queue-num 0")
         os.system('iptables -X')
+
+
+
+
+def broadcast_listener(port=7000):
+    """Server che ascolta sulla porta 7000 e risponde con l'IP del dispositivo sulla porta 5000."""
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_socket.bind(("", port))
+    server_socket.listen(5)
+
+    print(f"[*] Listener attivo sulla porta {port}...")
+
+    while True:
+        try:
+            client_socket, client_address = server_socket.accept()
+            print(f"[*] Connessione ricevuta da {client_address}")
+
+            response = f"{device_ip}:5000"
+            client_socket.sendall(response.encode())
+
+            client_socket.close()
+        except Exception as e:
+            print(f"Errore nel listener: {e}")
+
+
+def multiprocess_main():
+    process1 = multiprocessing.Process(target=main)
+    process2 = multiprocessing.Process(target=broadcast_listener,args=(7000,))
+    process1.start()
+    process2.start()
+    process1.join()
+    process2.join()
 
 if __name__ == "__main__":
     main()

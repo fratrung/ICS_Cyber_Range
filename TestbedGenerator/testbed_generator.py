@@ -188,5 +188,7 @@ def main():
             print(f"Executing route setup for {plc_name}...")
             os.system(command)
         print("Route setup for PLCs completed.")
+        
+        
 if __name__ == "__main__":
     main()

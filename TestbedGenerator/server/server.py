@@ -13,14 +13,66 @@ from pydantic import BaseModel
 from typing import List, Optional
 import uvicorn
 import asyncio
+import socket
 
  
-auth_node_service = FastAPI()
-auth_node = AuthoritativeNode()
+           
+def send_broadcast_message():
+    BROADCAST_IP = "255.255.255.255"
+    PORT = 7000
+    MESSAGE = b"Hello"
+    MAX_ATTEMPTS = 5
+    REQUIRED_RESPONSES = 3
+    TIMEOUT = 3
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SQL_SOCKET, socket.SO_BROADCAST,1)
+    s.settimeout(TIMEOUT)
+    
+    peers = set()
+    attempts = 0
+    
+    try:
+        while attempts < MAX_ATTEMPTS:
+            s.sendto(MESSAGE, (BROADCAST_IP, PORT))
+            start_time = time.time()
+            while time.time() - start_time < TIMEOUT:
+                try:
+                    response, addr = s.recvfrom(1024)
+                    response_text = response.decode().strip()
+                    
+                    if response_text:
+                        peer_info = tuple(response_text.split(":"))
+                        response_tuple = (peer_info[0],int(peer_info[1]))
+                        
+                        if response_tuple not in peers:
+                            peers.add(response_tuple)
+                            
+                    if len(peers) >= REQUIRED_RESPONSES:
+                        return peers
+                    
+                except s.timeout:
+                    break
+                
+            attempts +=1
+            time.sleep(2)
+        
+        return peers
+    except KeyboardInterrupt:
+        pass
+    finally:
+        s.close()
+
 
 class VCRequest(BaseModel):
     did_sub: str
     modbus_operations: Optional[List[str]] = []
+
+time.sleep(40)
+
+auth_node_service = FastAPI()
+auth_node = AuthoritativeNode()
+peers = send_broadcast_message()
+
 
 @auth_node_service.get("/get-vc")
 async def generate_vc(did_sub: str, modbus_operations: Optional[List[str]] = Query(default=[])):
@@ -39,13 +91,14 @@ async def generate_vc(did_sub: str, modbus_operations: Optional[List[str]] = Que
                             
                             
         
-async def configure_auth_node(auth_node: AuthoritativeNode):
+async def configure_auth_node(auth_node: AuthoritativeNode,peers):
     auth_node.generate_authoritative_node_did_iiot("172.29.0.2:5007")
     await auth_node.start_dht_service(5000)
     await auth_node.dht_node.bootstrap([("172.29.0.8",5000),("172.29.0.101",8001)])
     await auth_node.insert_did_document_in_the_DHT()
     await auth_node.dht_node.stop()
     
+
 if __name__ == "__main__":
     uvicorn.run(auth_node_service, host="0.0.0.0", port=5007)
     time.sleep(20)
