@@ -20,8 +20,8 @@ def generate_compose(num_hmi, num_plc):
     compose = {
         'version': '3.9',
         'services': {
-            'central-server': {
-                'build': './server',
+            'authoritative_node': {
+                'build': './authoritative_node',
                 'ports': ['5007:5007'],
                 'networks': {
                     'network1': {
@@ -86,7 +86,9 @@ def generate_compose(num_hmi, num_plc):
                 ]) +
                 f"cd scripts && " +
                 f"pip install ./python-netfilterqueue &&" +
-                f"pip install jwt" +
+                f"pip install PyJWT &&" +
+                f"pip install u-msgpack-python && " +
+                f"pip install cryptography && " +
                 f"tail -f /dev/null\""
             )
         }
@@ -147,7 +149,9 @@ def generate_compose(num_hmi, num_plc):
                 ]) +
                 f"cd scripts && " +
                 f"pip install ./python-netfilterqueue &&" +
-                f"pip install jwt" +
+                f"pip install PyJWT && " +
+                f"pip install u-msgpack-python && " +
+                f"pip install cryptography && " +
                 f"tail -f /dev/null\""
             )
         }
@@ -171,7 +175,7 @@ def main():
 
     execute = input("Do you want to execute 'docker-compose up'? (y/n): ").lower()
     if execute == 'y':
-        os.system('docker compose up -d')  # Run Docker Compose in detached mode
+        os.system('docker compose up --build -d')  # Run Docker Compose in detached mode
         print("Docker containers are starting...")
 
         # Execute custom commands inside each PLC container
