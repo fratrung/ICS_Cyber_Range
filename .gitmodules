@@ -4,12 +4,7 @@
 [submodule "TestbedGenerator/templates/plc_proxy/python-netfilterqueue"]
 	path = TestbedGenerator/templates/plc_proxy/python-netfilterqueue
 	url = https://github.com/manuelFabiano/python-netfilterqueue
-[submodule "TestbedGenerator/templates/hmi_proxy/did_iiot_dht"]
-	path = TestbedGenerator/templates/hmi_proxy/did_iiot_dht
-	url = https://github.com/fratrung/did-iiot-dht.git
-[submodule "TestbedGenerator/templates/plc_proxy/did_iiot_dht"]
-	path = TestbedGenerator/templates/plc_proxy/did_iiot_dht
-	url = https://github.com/fratrung/did-iiot-dht.git
-[submodule "TestbedGenerator/server/did_iiot_dht"]
-	path = TestbedGenerator/server/did_iiot_dht
+
+[submodule "TestbedGenerator/authoritative_node/did_iiot_dht"]
+	path = TestbedGenerator/authoritative_node/did_iiot_dht
 	url = https://github.com/fratrung/did-iiot-dht.git
