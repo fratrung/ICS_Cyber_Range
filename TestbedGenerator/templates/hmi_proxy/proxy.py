@@ -3,13 +3,15 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 import os
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), 'python-netfilterqueue/netfilterqueue'))
 from netfilterqueue import NetfilterQueue
 import crypto
 import json
-import sys
-sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
+import threading
+#sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
 
-from did_iiot_dht.AuthKademlia.kademlia.crypto.dilithium.src.dilithium_py.dilithium.default_parameters import Dilithium2
+from did_iiot_dht.AuthKademlia.kademlia.crypto.dilithium.src.dilithium_py.dilithium import Dilithium2
 sys.path.append(os.path.join(os.path.dirname(__file__), 'kyberpy'))
 from kyberpy import kyber 
 
@@ -18,55 +20,23 @@ from did_iiot_dht.dht_handler import DHTHandler
 import did_iiot_dht.utils as dht_utils
 import jwt.utils as jwt_utils
 import asyncio
-import time
-import multiprocessing
+
 import socket
 from network_discover import load_peers
 
 iptablesr1 = "iptables -A FORWARD -i eth0 -j NFQUEUE --queue-num 0"
 iptablesr2 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
+
 os.system(iptablesr1)
 os.system(iptablesr2)
 
+
 device_ip = os.getenv('DEVICE_IP')
+proxy_ip = os.getenv('PROXY_IP')
 peers = load_peers()
 
-time.sleep(20)
 
 dht_handler = DHTHandler()
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-loop.run_until_complete(dht_handler.start_dht_service(5000))
-loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
-
-dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
-loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-
-loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
-
-print("VC ottenute dal proxy dell'HMI")
-
-
-#with open("kyber_private_key", "rb") as f:
-#    kyber_private_key = f.read()
-
-#with open("dilithium_private_key", "rb") as f:
-#    dilithium_private_key = f.read()
-
-kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k0")
-dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")    
-
-with open("vc.json", "r") as f:
-    proxy_verifiable_credential = json.loads(f.read())
-
-authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="did:iiot:vc-issuer"))
-authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
-auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
-var_method = auth_node_did_document['verificationMethod'][0]
-auth_node_jwk_pub_key = var_method['publicKeyJwk']['x']
-auth_node_dilithium_public_key = dht_utils.base64_decode_publickey(auth_node_jwk_pub_key)
-
-
 
 keys = {}
 fragments_payload = {}  
@@ -78,6 +48,10 @@ retr_counter = 0
 tot_counter = 0
 
 def main():
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
     def packet_handler(packet):
         print('\n\nPacket received:')
         
@@ -134,10 +108,11 @@ def main():
             # If the packet is addressed to the HMI and has a SYN
             if pkt[TCP].flags & 2 and pkt[IP].dst == device_ip:
                 #DA CHIEDERE A MANUEL se questo è corretto
-                verfiable_credential = full_payload[:768]
-                jwt_verifiable_credential_json = json.load(verfiable_credential)
-                jwt_array = jwt_verifiable_credential_json.split(".")
-                vc_sender_payload = json.load(jwt_utils.base64url_decode(jwt_array[2].encode()))
+                verfiable_credential = full_payload[3188:]
+                jwt_verifiable_credential_json = json.loads(verfiable_credential)
+                jwt_vc = jwt_verifiable_credential_json['verifiable-credential']
+                jwt_array = jwt_vc.split(".")
+                vc_sender_payload = json.loads(jwt_utils.base64url_decode(jwt_array[1]))
                 did = vc_sender_payload['sub']
                 did_suffix = dht_utils.extract_did_suffix(did)
                 did_document_record_sender = loop.run_until_complete(dht_handler.get_record_from_DHT(key=did_suffix))
@@ -241,34 +216,74 @@ def main():
 
 
 def broadcast_listener(port=7000):
-    """Server che ascolta sulla porta 7000 e risponde con l'IP del dispositivo sulla porta 5000."""
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(("", port))
-    server_socket.listen(5)
+    #server_socket.listen(5)
 
     print(f"[*] Listener attivo sulla porta {port}...")
 
     while True:
         try:
-            client_socket, client_address = server_socket.accept()
-            print(f"[*] Connessione ricevuta da {client_address}")
+            data, addr = server_socket.recvfrom(1024)
+            print(f"[*] Ricevuto messaggio da {addr}: {data.decode()}")
 
-            response = f"{device_ip}:5000"
-            client_socket.sendall(response.encode())
-
-            client_socket.close()
+            # Risposta al sender con il proprio indirizzo
+            response = f"{proxy_ip}:7000"  # Puoi personalizzare la risposta
+            server_socket.sendto(response.encode(), addr)
+            
         except Exception as e:
-            print(f"Errore nel listener: {e}")
+           print(f"Errore nel listener: {e}")
+            
+            
+def start_dht_service():
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(dht_handler.start_dht_service(5000))
+    #if peers:
+    #    loop.run_until_complete(dht_handler.dht_node.bootstrap(peers)) 
+    loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.101",5000)]))    
+    print("DHT Service is started on port 5000 ..")
+    loop.run_forever()
 
 
-def multiprocess_main():
-    process1 = multiprocessing.Process(target=main)
-    process2 = multiprocessing.Process(target=broadcast_listener,args=(7000,))
-    process1.start()
-    process2.start()
-    process1.join()
-    process2.join()
+
 
 if __name__ == "__main__":
-    main()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    loop.run_until_complete(dht_handler.start_dht_service(5000))
+    #if peers:
+    #    loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
+    loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.101",5000)]))
+    
+    broadcast_listener_thread = threading.Thread(target=broadcast_listener,daemon=True)
+    broadcast_listener_thread.start()
+
+    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
+    loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    loop.run_until_complete(asyncio.sleep(20))
+    loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
+    #print("VC ottenute dal proxy dell'HMI")
+
+    with open("vc.json", "r") as f:
+        proxy_verifiable_credential_json = json.loads(f.read())
+    #proxy_verifiable_credential = proxy_verifiable_credential_json['verifiable-credential']
+    proxy_verifiable_credential = proxy_verifiable_credential_json 
+    
+    kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
+    dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0") 
+
+    authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
+    authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
+    auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
+    var_method = auth_node_did_document['verificationMethod'][0]
+    auth_node_jwk_pub_key = var_method['publicKeyJwk']['x']
+    auth_node_dilithium_public_key = dht_utils.base64_decode_publickey(auth_node_jwk_pub_key)
+
+    netfilter_thread = threading.Thread(target=main,daemon=True)
+    netfilter_thread.start()
+    
+    loop.run_forever()

@@ -1,7 +1,15 @@
-import socket
-import time 
+import socket 
+import time
 
-BROADCAST_IP = "255.255.255.255"
+import logging
+
+logging.basicConfig(
+    level=logging.INFO,  # Puoi cambiare in DEBUG per più dettagli
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+
+BROADCAST_IP = "172.29.0.255"
 PORT = 7000
 MESSAGE = b"Hello"
 MAX_ATTEMPTS = 5
@@ -36,7 +44,7 @@ def save_responses(responses):
             
 def send_broadcast_message():
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.setsockopt(socket.SQL_SOCKET, socket.SO_BROADCAST,1)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
     s.settimeout(TIMEOUT)
     
     peers = set()
@@ -44,6 +52,7 @@ def send_broadcast_message():
     
     try:
         while attempts < MAX_ATTEMPTS:
+            logging.info(f"{attempts} tentativo")
             s.sendto(MESSAGE, (BROADCAST_IP, PORT))
             start_time = time.time()
             while time.time() - start_time < TIMEOUT:
@@ -52,8 +61,10 @@ def send_broadcast_message():
                     response_text = response.decode().strip()
                     
                     if response_text:
+                        logging.info("Ricevuta una risposta!")
                         peer_info = tuple(response_text.split(":"))
                         response_tuple = (peer_info[0],int(peer_info[1]))
+                        logging.info(f"Ricevuta una risposta! --> {response_tuple}")
                         
                         if response_tuple not in peers:
                             peers.add(response_tuple)
@@ -62,7 +73,8 @@ def send_broadcast_message():
                         save_responses(peers)
                         return
                     
-                except s.timeout:
+                except socket.timeout:
+                    logging.info("tempo di attesa terminato, nuovo tentativo.")
                     break
                 
             attempts +=1
@@ -77,4 +89,6 @@ def send_broadcast_message():
         
 if __name__ == "__main__":
     send_broadcast_message()
+    peers = load_peers()
+    #logging.info(f"{peers}")
         
