@@ -27,7 +27,9 @@ import multiprocessing
 import socket
 from network_discover import load_peers
 
-
+def get_container_ip():
+    ip = os.popen("hostname -I | awk '{print $1}'").read().strip()
+    return ip
 
 
 iptablesr1 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
@@ -37,7 +39,7 @@ os.system(iptablesr1)
 os.system(iptablesr2)
 
 device_ip = os.getenv('DEVICE_IP')
-proxy_ip = os.getenv('PROXY_IP')
+proxy_ip = get_container_ip()
 peers = load_peers()
 
 dht_handler = DHTHandler()
