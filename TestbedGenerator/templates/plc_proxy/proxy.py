@@ -25,22 +25,26 @@ import asyncio
 import time
 import multiprocessing
 import socket
-from network_discover import load_peers
+from network_discover import load_peers, send_broadcast_message
+
 
 def get_container_ip():
     ip = os.popen("hostname -I | awk '{print $1}'").read().strip()
     return ip
 
+print("Starting PLC's Proxy..")
 
 iptablesr1 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
 iptablesr2 = "iptables -A FORWARD -i eth0 -j NFQUEUE --queue-num 0"
 
+
 os.system(iptablesr1)
 os.system(iptablesr2)
 
+
 device_ip = os.getenv('DEVICE_IP')
 proxy_ip = get_container_ip()
-peers = load_peers()
+peers = send_broadcast_message()
 
 dht_handler = DHTHandler()
 
@@ -205,9 +209,9 @@ def main():
             if len(pkt) > 1400:
                 # Se il pacchetto è più grande dell'MTU, frammentalo
                 print(f"Pacchetto troppo grande ({len(pkt)} bytes), frammentato.")
-                frags = fragment(pkt, fragsize=1400)  # 28 byte per l'header IP e ICMP
+                frags = fragment(pkt, fragsize=1400)  # 28 byte for IP and ICMP header
 
-                # Invia ogni frammento separatamente
+                
                 for frag in frags:
                     send(frag)
             else:
@@ -226,6 +230,7 @@ def main():
         os.system('iptables -X')
         
 
+
 def broadcast_listener(port=7000):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -239,13 +244,11 @@ def broadcast_listener(port=7000):
             data, addr = server_socket.recvfrom(1024)
             print(f"[Broadcast Listener] Received message from {addr}: {data.decode()}")
 
-            # Risposta al sender con il proprio indirizzo
-            response = f"{proxy_ip}:5000"  # Puoi personalizzare la risposta
+            response = f"{proxy_ip}:5000"  
             server_socket.sendto(response.encode(), addr)
             
         except Exception as e:
            print(f"Errore nel listener: {e}")
-
 
 
 
@@ -260,25 +263,29 @@ if __name__ == "__main__":
     broadcast_listener_thread = threading.Thread(target=broadcast_listener,daemon=True)
     broadcast_listener_thread.start()
     
-    if peers:
-        loop.run_until_complete(dht_handler.dht_node.bootstrap(peers)) 
-
-    
-
     dht_handler.generate_did_iiot(id_service="main-service",service_type="PLC",service_endpoint=device_ip)
     kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
     dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
-    loop.run_until_complete(asyncio.sleep(20))
-    loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-    loop.run_until_complete(asyncio.sleep(20)) # or time.sleep(20)
+    
+    if peers:
+        loop.run_until_complete(dht_handler.dht_node.bootstrap(peers)) 
+        loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    else:
+        print("Nessun peers!")
+        loop.run_until_complete(asyncio.sleep(50))
+        loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+
+    
+    #loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
-    print("VC obtained for PLC's Proxy") # for debug
+    print("[PLC's Proxy] - Verifiable Credential obtained from Authoritative Node") 
     
     
 
     with open("vc.json", "r") as f:
-        proxy_verifiable_credential_json = json.loads(f.read())
-    proxy_verifiable_credential = proxy_verifiable_credential_json
+        proxy_verifiable_credential = json.loads(f.read())
+    
     authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
     authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
     auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
@@ -288,5 +295,6 @@ if __name__ == "__main__":
 
     netfilter_thread = threading.Thread(target=main,daemon=True)
     netfilter_thread.start()
+    
     loop.run_forever()
 
