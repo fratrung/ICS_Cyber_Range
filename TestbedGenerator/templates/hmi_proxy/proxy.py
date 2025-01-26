@@ -3,7 +3,6 @@ from Crypto.Cipher import AES
 from Crypto.Random import get_random_bytes
 from Crypto.Util.Padding import pad, unpad
 import os
-import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), 'python-netfilterqueue/netfilterqueue'))
 from netfilterqueue import NetfilterQueue
 import crypto
@@ -20,17 +19,21 @@ from did_iiot_dht.dht_handler import DHTHandler
 import did_iiot_dht.utils as dht_utils
 import jwt.utils as jwt_utils
 import asyncio
-
+import time
+import multiprocessing
 import socket
-from network_discover import load_peers
+from network_discover import send_broadcast_message
+
 
 def get_container_ip():
     ip = os.popen("hostname -I | awk '{print $1}'").read().strip()
     return ip
-
+  
+print("Starting HMI's Proxy..")
 
 iptablesr1 = "iptables -A FORWARD -i eth0 -j NFQUEUE --queue-num 0"
 iptablesr2 = "iptables -A FORWARD -i eth1 -j NFQUEUE --queue-num 0"
+
 
 os.system(iptablesr1)
 os.system(iptablesr2)
@@ -38,10 +41,13 @@ os.system(iptablesr2)
 
 device_ip = os.getenv('DEVICE_IP')
 proxy_ip = get_container_ip()
-peers = load_peers()
+time.sleep(5)
+peers = send_broadcast_message()
+
 
 
 dht_handler = DHTHandler()
+
 
 keys = {}
 fragments_payload = {}  
@@ -51,8 +57,6 @@ sequences = []
 synlist = []
 retr_counter = 0
 tot_counter = 0
-
-
 
 def main():
 
@@ -234,24 +238,12 @@ def broadcast_listener(port=7000):
         try:
             data, addr = server_socket.recvfrom(1024)
             print(f"[*] Ricevuto messaggio da {addr}: {data.decode()}")
-
-            # Risposta al sender con il proprio indirizzo
-            response = f"{proxy_ip}:7000"  # Puoi personalizzare la risposta
+            
+            response = f"{proxy_ip}:5000" 
             server_socket.sendto(response.encode(), addr)
             
         except Exception as e:
            print(f"Errore nel listener: {e}")
-            
-            
-def start_dht_service():
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-    loop.run_until_complete(dht_handler.start_dht_service(5000))
-    #if peers:
-    #    loop.run_until_complete(dht_handler.dht_node.bootstrap(peers)) 
-    loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.101",5000)]))    
-    print("DHT Service is started on port 5000 ..")
-    loop.run_forever()
 
 
 
@@ -262,27 +254,38 @@ if __name__ == "__main__":
     asyncio.set_event_loop(loop)
 
     loop.run_until_complete(dht_handler.start_dht_service(5000))
-    #if peers:
-    #    loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
-    loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.101",5000)]))
     
     broadcast_listener_thread = threading.Thread(target=broadcast_listener,daemon=True)
     broadcast_listener_thread.start()
-
-    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
-    loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-    loop.run_until_complete(asyncio.sleep(20))
-    loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
-    #print("VC ottenute dal proxy dell'HMI")
-
-    with open("vc.json", "r") as f:
-        proxy_verifiable_credential_json = json.loads(f.read())
-    #proxy_verifiable_credential = proxy_verifiable_credential_json['verifiable-credential']
-    proxy_verifiable_credential = proxy_verifiable_credential_json 
     
+    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
     kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
     dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0") 
+    
+    if peers:
+        loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
+        loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    else:
+        print("Nessun peers!")
+        # aggiungere un controllo: se ci sono peers con cui ho fatto il bootstrap procedo con l'inserimento del did document, altrimenti aspetto fino a quando
+        # non arriva almeno un peer nella DHT e fa il bootstrap , quindi ragionare su come effettuare un controllo sui peers che hanno effettuato il bootstrap verso questo nodo
+        loop.run_until_complete(asyncio.sleep(50))
+        loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    
+    
+    
+    
+    #dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
+    #loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+    loop.run_until_complete(asyncio.sleep(20))
+    loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
+    print("[HMI's Proxy] - Verifiable credential obtained from Authoritative Node")
 
+    with open("vc.json", "r") as f:
+        proxy_verifiable_credential = json.loads(f.read())
+    
+    
+    
     authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
     authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
     auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)

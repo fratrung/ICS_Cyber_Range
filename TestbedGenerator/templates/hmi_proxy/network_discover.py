@@ -1,22 +1,5 @@
-import socket 
-import time
-
-import logging
-
-logging.basicConfig(
-    level=logging.INFO,  # Puoi cambiare in DEBUG per più dettagli
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-
-BROADCAST_IP = "172.29.0.255"
-PORT = 7000
-MESSAGE = b"Hello"
-MAX_ATTEMPTS = 5
-REQUIRED_RESPONSES = 3
-TIMEOUT = 3
-OUTPUT_FILE = "peers.txt"
-
+import socket
+import time 
 
 def load_peers(filename="peers.txt"):
     peers = []
@@ -37,12 +20,22 @@ def load_peers(filename="peers.txt"):
     return peers
 
 def save_responses(responses):
-    with open(OUTPUT_FILE, "w") as f:
+    print("Salvo le risposte")
+    with open("peers.txt", "w") as f:
         for response in responses:
             f.write(f"{response[0]} {response[1]}\n")  
             
             
 def send_broadcast_message():
+    print("Sending Broadcast message for DHT's Peers discovery..")
+    BROADCAST_IP = "172.29.0.255"
+    PORT = 7000
+    MESSAGE = b"Hello"
+    MAX_ATTEMPTS = 5
+    REQUIRED_RESPONSES = 3
+    TIMEOUT = 3
+    OUTPUT_FILE = "peers.txt"
+    
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST,1)
     s.settimeout(TIMEOUT)
@@ -52,7 +45,6 @@ def send_broadcast_message():
     
     try:
         while attempts < MAX_ATTEMPTS:
-            logging.info(f"{attempts} tentativo")
             s.sendto(MESSAGE, (BROADCAST_IP, PORT))
             start_time = time.time()
             while time.time() - start_time < TIMEOUT:
@@ -61,12 +53,11 @@ def send_broadcast_message():
                     response_text = response.decode().strip()
                     
                     if response_text:
-                        logging.info("Ricevuta una risposta!")
                         peer_info = tuple(response_text.split(":"))
                         response_tuple = (peer_info[0],int(peer_info[1]))
-                        logging.info(f"Ricevuta una risposta! --> {response_tuple}")
                         
                         if response_tuple not in peers:
+                            print(f"Response received --> {response_tuple}")
                             peers.add(response_tuple)
                             
                     if len(peers) >= REQUIRED_RESPONSES:
@@ -74,21 +65,18 @@ def send_broadcast_message():
                         return
                     
                 except socket.timeout:
-                    logging.info("tempo di attesa terminato, nuovo tentativo.")
                     break
                 
-            attempts +=1
+            attempts += 1
             time.sleep(2)
         
         save_responses(peers)
+        return peers
     except KeyboardInterrupt:
         pass
     finally:
         s.close()
         
         
-if __name__ == "__main__":
-    send_broadcast_message()
-    peers = load_peers()
-    #logging.info(f"{peers}")
+
         
