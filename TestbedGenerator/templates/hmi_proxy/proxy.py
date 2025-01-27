@@ -264,20 +264,28 @@ if __name__ == "__main__":
     
     if peers:
         loop.run_until_complete(dht_handler.dht_node.bootstrap(peers))
+        loop.run_until_complete(asyncio.sleep(3))
         loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
     else:
-        print("Nessun peers!")
-        # aggiungere un controllo: se ci sono peers con cui ho fatto il bootstrap procedo con l'inserimento del did document, altrimenti aspetto fino a quando
-        # non arriva almeno un peer nella DHT e fa il bootstrap , quindi ragionare su come effettuare un controllo sui peers che hanno effettuato il bootstrap verso questo nodo
-        loop.run_until_complete(asyncio.sleep(50))
+        print("No peers in the network!")
+        time.sleep(5)
+        routing_table_kademlia = dht_handler.dht_node.protocol.router
+        all_nodes = []
+        while True:
+            for bucket in routing_table_kademlia.buckets:
+                all_nodes.extend(bucket.get_nodes())
+            if len(all_nodes) >= 2:
+                break
+            print(f"Node bucket: {all_nodes} nodes")
+            loop.run_until_complete(asyncio.sleep(3))
+        
+        
         loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+        print(f"Node bucket: {all_nodes} nodes , after setting DID Document in the DHT")
     
     
     
-    
-    #dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
-    #loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-    loop.run_until_complete(asyncio.sleep(20))
+    loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
     print("[HMI's Proxy] - Verifiable credential obtained from Authoritative Node")
 

@@ -23,7 +23,6 @@ import did_iiot_dht.utils as dht_utils
 import jwt.utils as jwt_utils
 import asyncio
 import time
-import multiprocessing
 import socket
 from network_discover import load_peers, send_broadcast_message
 
@@ -269,14 +268,25 @@ if __name__ == "__main__":
     
     if peers:
         loop.run_until_complete(dht_handler.dht_node.bootstrap(peers)) 
+        loop.run_until_complete(asyncio.sleep(5))
         loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
     else:
-        print("Nessun peers!")
-        loop.run_until_complete(asyncio.sleep(50))
+        print("No peers in the network!")
+        time.sleep(5)
+        routing_table_kademlia = dht_handler.dht_node.protocol.router
+        all_nodes = []
+        while True:
+            for bucket in routing_table_kademlia.buckets:
+                all_nodes.extend(bucket.get_nodes())
+            if len(all_nodes) >= 2:
+                break
+            print(f"Node bucket: {all_nodes} nodes")
+            loop.run_until_complete(asyncio.sleep(3))
+        
         loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
+        print(f"Node bucket: {all_nodes} nodes , after setting DID Document in the DHT")
 
     
-    #loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
     loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
     print("[PLC's Proxy] - Verifiable Credential obtained from Authoritative Node") 
