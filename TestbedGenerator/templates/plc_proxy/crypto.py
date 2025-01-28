@@ -10,7 +10,7 @@ import json
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
-from dilithium import Dilithium2
+from did_iiot_dht.AuthKademlia.modules import Dilithium2
 sys.path.append(os.path.join(os.path.dirname(__file__), 'kyberpy'))
 from kyberpy import kyber 
 

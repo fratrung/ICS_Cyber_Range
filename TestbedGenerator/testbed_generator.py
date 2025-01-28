@@ -89,7 +89,7 @@ def generate_compose(num_hmi, num_plc):
                 f"pip install PyJWT &&" +
                 f"pip install u-msgpack-python && " +
                 f"pip install cryptography && " +
-                f"tail -f /dev/null\""
+                 f"tail -f /dev/null\""
             )
         }
 
@@ -152,9 +152,11 @@ def generate_compose(num_hmi, num_plc):
                 f"pip install PyJWT && " +
                 f"pip install u-msgpack-python && " +
                 f"pip install cryptography && " +
-                f"tail -f /dev/null\""
+                 f"tail -f /dev/null\""
             )
         }
+        
+       
 
     return compose
 
