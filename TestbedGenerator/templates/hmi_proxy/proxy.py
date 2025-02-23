@@ -147,7 +147,6 @@ def main():
             # If the packet is addressed to the HMI and has a SYN
             if pkt[TCP].flags & 2 and pkt[IP].dst == device_ip:
                 if len(full_payload) > 8:
-                #DA CHIEDERE A MANUEL se questo è corretto
                     print(f"\n\n FULL PAYLOAD:{full_payload}\n\n")
                     verifiable_credential = full_payload[3188:]
                     print(verifiable_credential)
@@ -162,8 +161,8 @@ def main():
                     did_document_record_sender = loop.run_until_complete(dht_handler.get_record_from_DHT(key=did_suffix))
                     stop = time.time()
                     retriving_did_document_delay = stop - start
+
                     print(f"\n\nDHT LATENCY : {retriving_did_document_delay}\n\n")
-                    did_document_delays.append(retriving_did_document_delay)
 
 
                     print(f"DID DOCUMENT TROVATO -> did:iiot:{did_suffix}!")
@@ -178,7 +177,7 @@ def main():
                     start_compute_sym_key = time.time()
                     keys[src_ip], sign_key = crypto.compute_symmetric_key(full_payload, kyber_private_key,auth_node_dilithium_public_key,sender_dilithium_public_key)
                     stop_compute_sym_key = time.time()
-                    compute_symmetric_key_delays.append(stop_compute_sym_key-start_compute_sym_key)
+                    compute_symmetric_key_delay=stop_compute_sym_key-start_compute_sym_key
 
 
                     if keys[src_ip] is None:
@@ -197,12 +196,10 @@ def main():
 
 
                     with open("retrieve_did_document.txt","a") as f:
-                        for delay in did_document_delays:
-                            f.write(f"{delay}\n")
+                        f.write(f"{retriving_did_document_delay}\n")
 
                     with open("compute_sym_key.txt","a") as f:
-                        for delay in compute_symmetric_key_delays:
-                            f.write(f"{delay}\n")
+                        f.write(f"{compute_symmetric_key_delay}\n")
 
 
                 else:
@@ -294,7 +291,6 @@ def broadcast_listener(port=7000):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(("", port))
-    #server_socket.listen(5)
 
     print(f"[*] Listener attivo sulla porta {port}...")
 
@@ -316,7 +312,7 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
     loop.run_until_complete(dht_handler.start_dht_service(5000))
 
-    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
+    dht_handler.generate_did_iiot(id_service="main-service",service_type="PLC",service_endpoint=device_ip)
     kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
     dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
     
@@ -393,10 +389,4 @@ if __name__ == "__main__":
     print(f"\nBuckets:{nodes}")
 
     main()
-
-
-
-
-
-
 

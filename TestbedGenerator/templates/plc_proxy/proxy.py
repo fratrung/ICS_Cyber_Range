@@ -82,15 +82,6 @@ did_document_delays = []
 symmetric_key_delays = []
 sign_sym_key_delay = []
 
-#if peers:
-#    for peer in peers:
-#        if peer in bootstrap_nodes:
-#            peers.remove(peer)
-        
-#else:
-#    peers = []
-
-#bootstrap_nodes.extend(peers)
 
 
 dht_handler = DHTHandler()
@@ -182,6 +173,7 @@ def main():
                     did_document_record_sender = loop.run_until_complete(dht_handler.get_record_from_DHT(key=did_suffix))
                     stop = time.time()
                     retriving_did_document_delay = stop - start
+
                     print(f"\n\nDHT LATENCY : {retriving_did_document_delay}\n\n")
 
                     if did_document_record_sender:
@@ -317,6 +309,7 @@ def broadcast_listener(port=7000):
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.bind(("", port))
+    #server_socket.listen(5)
 
     print(f"[Broadcast Listener] Listen on port {port}...")
 
@@ -355,6 +348,7 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
             loop.run_until_complete(asyncio.sleep(2))
     else:
         loop.run_until_complete(dht_handler.dht_node.bootstrap(bootstrap_nodes))
+        #loop.run_until_complete(asyncio.sleep(random_number+2))
 
     loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
 
@@ -416,6 +410,6 @@ if __name__ == "__main__":
 
     main()
     
-    
+
 
 
