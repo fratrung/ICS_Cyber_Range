@@ -13,8 +13,7 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 - **Issuer Node**: Generates Verifiable Credential in JWT format and distributes them across the network.
 - **HMI (Human-Machine Interface)**: The interface for monitoring and controlling the PLC.
 - **PLC (Programmable Logic Controller)**: Simulated using OpenPLC to control industrial processes.
-- **Proxies**: Each device in the network (HMI and PLC) has its own proxy to manage secure communication. The proxies are peers of the 
-   DHT network. Each Proxies are identified by a did:iiot.
+- **Proxies**: Each device in the network (HMI and PLC) is assigned its own proxy to handle secure communication. The proxies operate as peers within the DHT network. However, their identification within the network is managed through did:iiot
 - **Attacker**: A simulated attacker to test the security of the system.
 - **DHT**: Used for storing DID Document of the proxies.
 
