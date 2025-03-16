@@ -16,7 +16,7 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 - **Proxies**: Each device in the network (HMI and PLC) has its own proxy to manage secure communication. The proxies are peers of the 
    DHT network. Each Proxies are identified by a did:iiot.
 - **Attacker**: A simulated attacker to test the security of the system.
-- **DHT**: Used per storing DID Document of the proxies.
+- **DHT**: Used for storing DID Document of the proxies.
 
 ## Getting Started
 
