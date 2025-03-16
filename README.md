@@ -54,4 +54,4 @@ python3 client.py
 - [OpenPLC] (https://github.com/thiagoralves/OpenPLC_v3)
 - [Dilithium-py] (https://github.com/GiacomoPope/dilithium-py)
 - [Kyber-py] (https://github.com/GiacomoPope/kyber-py)
-- [did:iiot Method] (https://github.com/fratrung/did-iiot)
+- [did:iiot] (https://github.com/fratrung/did-iiot)
