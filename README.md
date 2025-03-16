@@ -10,11 +10,13 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 
 ### Network Components
 
-- **Central Server**: Generates certificates and distributes them across the network.
+- **Issuer Node**: Generates Verifiable Credential in JWT format and distributes them across the network.
 - **HMI (Human-Machine Interface)**: The interface for monitoring and controlling the PLC.
 - **PLC (Programmable Logic Controller)**: Simulated using OpenPLC to control industrial processes.
-- **Proxies**: Each device in the network (HMI and PLC) has its own proxy to manage secure communication.
+- **Proxies**: Each device in the network (HMI and PLC) has its own proxy to manage secure communication. The proxies are peers of the 
+   DHT network. Each Proxies are identified by a did:iiot.
 - **Attacker**: A simulated attacker to test the security of the system.
+- **DHT**: Used per storing DID Document of the proxies.
 
 ## Getting Started
 
@@ -25,55 +27,15 @@ Follow the steps below to set up and run the ICS_Cyber_Range.
 First, clone the repository to your local machine:
 
 ```bash
-git clone https://github.com/yourusername/ICS_Cyber_Range.git
-cd ICS_Cyber_Range
+git clone -recurse-submodules https://github.com/fratrung/ICS_Cyber_Range.git
+cd ICS_Cyber_Range/TestbedGenerator
 ```
 
 ### 2. Build and Start the Environment
 
-Use Docker Compose to build and start the entire environment:
+Use **testbed_generator.py** to build and start the entire environment:
 ```bash
-docker compose up --build
-```
-
-### 3. Activate OpenPLC
-
-To activate the OpenPLC simulator:
-
-- Connect to the OpenPLC interface by navigating to http://localhost:8080 in your web browser.
-- Log in with the credentials:
-    - Username: openplc
-    - Password: openplc
-- Load the Hello.st program and start it.
-
-Next, access the bash of the OpenPLC container and modify the default gateway to route traffic through the PLC proxy:
-```bash
-docker exec -it plc1 bash
-ip route del default
-ip route add default via 172.29.0.4
-```
-
-### 4. Start the proxies
-Once the environment is up, access the bash of proxy1 and proxy2 to generate the necessary certificates:
-```bash
-# For Proxy 1
-docker exec -it proxy1 bash
-cd scripts
-python3 cert.py
-
-# For Proxy 2
-docker exec -it proxy2 bash
-cd scripts
-python3 cert.py
-```
-
-After generating the certificates, start the proxy services on both proxy1 and proxy2:
-```bash
-# On Proxy 1
-python3 proxy.py
-
-# On Proxy 2
-python3 proxy.py
+sudo python3 testbed_generator.py
 ```
 
 ### 5. Test communication with HMI
@@ -93,3 +55,4 @@ python3 client.py
 - [OpenPLC] (https://github.com/thiagoralves/OpenPLC_v3)
 - [Dilithium-py] (https://github.com/GiacomoPope/dilithium-py)
 - [Kyber-py] (https://github.com/GiacomoPope/kyber-py)
+- [did:iiot Method] (https://github.com/fratrung/did-iiot)
