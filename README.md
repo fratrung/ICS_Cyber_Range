@@ -27,7 +27,7 @@ Follow the steps below to set up and run the ICS_Cyber_Range.
 First, clone the repository to your local machine:
 
 ```bash
-git clone -recurse-submodules https://github.com/fratrung/ICS_Cyber_Range.git
+git clone --recurse-submodules https://github.com/fratrung/ICS_Cyber_Range.git
 cd ICS_Cyber_Range/TestbedGenerator
 ```
 
