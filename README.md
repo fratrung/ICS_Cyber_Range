@@ -15,7 +15,7 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 - **PLC (Programmable Logic Controller)**: Simulated using OpenPLC to control industrial processes.
 - **Proxies**: Each device in the network (HMI and PLC) is assigned its own proxy to handle secure communication. The proxies identification within the industrial network is managed through did:iiot. However, they operate as peers within the DHT network.
 - **Attacker**: A simulated attacker to test the security of the system.
-- **DHT**: A modified DHT used to store records consisting of a DID Document and its corresponding digital signature. The digital signature can be verified using the public key contained within the DID Document itself, ensuring both the authenticity and integrity of the stored data. This approach allows the DHT to function as a Verifiable Data Registry, providing a decentralized and tamper-resistant system for identity management.
+- **DHT**: A modified DHT used to store records consisting of a DID Document and its corresponding digital signature. The digital signature can be verified using the public key contained within the DID Document itself, ensuring both the authenticity and integrity of the stored data. This approach allows the DHT to function as a Verifiable Data Registry.
 
 ## Getting Started
 
