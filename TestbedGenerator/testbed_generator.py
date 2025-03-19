@@ -25,8 +25,8 @@ def generate_compose(num_hmi, num_plc):
     compose = {
         'version': '3.9',
         'services': {
-            'authoritative_node': {
-                'build': './authoritative_node',
+            'issuer_node': {
+                'build': './issuer_node',
                 'ports': ['5007:5007'],
                 'networks': {
                     'network1': {
