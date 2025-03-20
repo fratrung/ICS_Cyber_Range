@@ -12,7 +12,6 @@
 	path = TestbedGenerator/templates/plc_proxy/did_iiot_dht
 	url = https://github.com/fratrung/did-iiot-dht.git
 
-	url = https://github.com/fratrung/did-iiot-dht.git
-[submodule "TestbedGenerator/authoritative_node/did_iiot_dht"]
-	path = TestbedGenerator/authoritative_node/did_iiot_dht
+[submodule "TestbedGenerator/issuer_node/did_iiot_dht"]
+	path = TestbedGenerator/issuer_node/did_iiot_dht
 	url = https://github.com/fratrung/did-iiot-dht.git
