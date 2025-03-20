@@ -11,4 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 5007
 EXPOSE 5000
 
-CMD ["python", "did_iiot_dht/authoritative_node.py"]
+CMD ["python", "did_iiot_dht/issuer_node.py"]
