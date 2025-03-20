@@ -57,3 +57,4 @@ python3 client.py
 - [Dilithium-py] (https://github.com/GiacomoPope/dilithium-py)
 - [Kyber-py] (https://github.com/GiacomoPope/kyber-py)
 - [did:iiot] (https://github.com/fratrung/did-iiot)
+- [did-iiot-dht] (https://github.com/fratrung/did-iiot-dht)
