@@ -25,7 +25,6 @@ import asyncio
 import time
 import multiprocessing
 import socket
-from network_discover import load_peers, send_broadcast_message
 import random
 
 def get_container_ip():
@@ -40,7 +39,7 @@ def print_iptables_rules():
         print(f"iptables rules:\n {output}")
         stream.close()
     except Exception as e:
-        print(f"Si è verificato un errore: {e}")
+        print(f"error: {e}")
 
 
 
@@ -60,15 +59,11 @@ os.system("iptables -A INPUT -p udp --dport 5000 -j ACCEPT")
 os.system("iptables -I INPUT -i lo -j ACCEPT")
 os.system("iptables -I OUTPUT -o lo -j ACCEPT")
 
-
-
 print_iptables_rules()
-
-
 
 device_ip = os.getenv('DEVICE_IP')
 proxy_ip = get_container_ip()
-#peers = send_broadcast_message()
+
 
 bootstrap_nodes = [("172.29.0.181",5000),("172.29.0.63",5000),("172.29.0.2",5000)] #entry nodes for DHT 
 
@@ -161,7 +156,7 @@ def main():
                 m = f"{jwt_array[0]}.{jwt_array[1]}".encode('utf-8')
                 signature_for_validation = jwt_utils.base64url_decode(jwt_array[2].encode())
                 if dht_handler.dilith_key_manager.verify_signature(auth_node_dilithium_public_key,m,signature_for_validation,2):
-                    print("Certificate verified successfully.")
+                    print("Verifiable Credential verified successfully.")
                     print(type(jwt_array[1]))
                     
                     #vc_payload = json.loads(jwt_utils.base64url_decode(jwt_array[1].decode('utf-8')))
@@ -177,7 +172,7 @@ def main():
                     print(f"\n\nDHT LATENCY : {retriving_did_document_delay}\n\n")
 
                     if did_document_record_sender:
-                        print(f"DID DOCUMENT di did:iiot:{did_suffix} TROVATO!")
+                        print(f"DID DOCUMENT of did:iiot:{did_suffix}!")
                     else:
                         print("\nDID DOCUMENT non trovato!!\n")
                     did_document_raw_sender = did_document_record_sender[12+2420:]
@@ -221,13 +216,13 @@ def main():
                     del pkt[IP].len
                     print("Sending packet to PLC")
 
-                    with open("retrieve_did_document.txt","a") as f:
+                    with open("retrieve_did_document.txt","w") as f:
                         f.write(f"{retriving_did_document_delay}\n")
                     
-                    with open("generate_symmetric_key_encaps_kyber.txt","a") as f:
+                    with open("generate_symmetric_key_encaps_kyber.txt","w") as f:
                         f.write(f"{sym_key_delay}\n")
 
-                    with open("sign_symmetric_key_delay.txt","a") as f:
+                    with open("sign_symmetric_key_delay.txt","w") as f:
                         f.write(f"{sign_sym_key}\n")
 
 
@@ -305,25 +300,6 @@ def main():
         
 
 
-def broadcast_listener(port=7000):
-    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    server_socket.bind(("", port))
-    #server_socket.listen(5)
-
-    print(f"[Broadcast Listener] Listen on port {port}...")
-
-    while True:
-        try:
-            data, addr = server_socket.recvfrom(1024)
-            print(f"[Broadcast Listener] Received message from {addr}: {data.decode()}")
-
-            response = f"{proxy_ip}:5000"  
-            server_socket.sendto(response.encode(), addr)
-            
-        except Exception as e:
-           print(f"Errore nel listener: {e}")
-
 
 def dht_service(dht_handler:DHTHandler,proxy_ip):
     loop = asyncio.new_event_loop()
@@ -356,12 +332,12 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
     loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
-    print("[PLC's Proxy] - Verifiable Credential obtained from Authoritative Node") 
+    print("[PLC's Proxy] - Verifiable Credential obtained from Issuer Node") 
 
     start_t = time.time()
     authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
     stop_t = time.time()
-    print(f"TEMPO PER IL RECUPER DEL DID DOCUMENT DELL' AUTH NODE: {stop_t - start_t}")
+    print(f"Retrieve time for IssuerNode's DID Document: {stop_t - start_t}")
     authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
     auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
     var_method = auth_node_did_document['verificationMethod'][0]
