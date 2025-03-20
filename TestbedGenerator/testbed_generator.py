@@ -1,10 +1,7 @@
 import os
 import yaml
 import requests
-
-
-
-
+import time
 
 def create_volume_directories(num_hmi, num_plc):
     hmi_template = "templates/hmi_proxy"
@@ -218,6 +215,7 @@ def main():
             os.system(command)
         print("Route setup for PLCs completed.")
         
+        time.sleep(3)
         #Starting OpenPLC service
         openplc_service_started = 0
         openplc_login = {
