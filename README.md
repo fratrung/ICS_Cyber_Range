@@ -2,7 +2,7 @@
 
 ## Overview
 
-**ICS_Cyber_Range** is a cyber range designed to simulate and test a secure network infrastructure using public key cryptography. The goal is to secure Modbus communication, a widely used protocol in industrial control systems (ICS). This project uses OpenPLC to simulate a Programmable Logic Controller (PLC) and provides a controlled environment to experiment with securing ICS protocols.
+**ICS_Cyber_Range** is a cyber range designed to simulate and test a secure, decentralized infrastructure that utilizes post-quantum cryptography for robust security. It leverages did:iiot for decentralized authentication and key exchange, based on a self-sovereign identity model. The goal is to secure Modbus communication, a widely used protocol in industrial control systems (ICS). This project uses OpenPLC to simulate a Programmable Logic Controller (PLC) and provides a controlled environment to experiment with securing ICS protocols.
 
 ### What is a Cyber Range?
 
