@@ -58,3 +58,4 @@ python3 client.py
 - [Kyber-py] (https://github.com/GiacomoPope/kyber-py)
 - [did:iiot] (https://github.com/fratrung/did-iiot)
 - [did-iiot-dht] (https://github.com/fratrung/did-iiot-dht)
+- [AuthKademlia] (https://github.com/fratrung/AuthKademlia)
