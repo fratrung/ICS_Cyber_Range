@@ -43,7 +43,7 @@ sudo python3 testbed_generator.py
 Access the bash of the HMI container:
 
 ```bash
-docker exec -it hmi bash
+docker exec -it hmi1 bash
 ```
 
 Start the testing script:
