@@ -40,7 +40,8 @@ sudo python3 testbed_generator.py
 ```
 
 ### 5. Test communication with HMI
-Access the bash of the HMI container:
+Wait for a short period to allow the nodes sufficient time to complete their automatic configuration.
+After this, you can access the bash of the HMI container:
 
 ```bash
 docker exec -it hmi1 bash
