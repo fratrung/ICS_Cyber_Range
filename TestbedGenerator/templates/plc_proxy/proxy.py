@@ -30,7 +30,6 @@ def get_container_ip():
     return ip
 
 def print_iptables_rules():
-    # Usa os.popen per eseguire il comando iptables -L
     try:
         stream = os.popen('iptables -L')
         output = stream.read()
@@ -326,8 +325,6 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
     loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
 
-    
-
     loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
     print("[PLC's Proxy] - Verifiable Credential obtained from Issuer Node") 
@@ -344,7 +341,6 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
     with open("auth_node_pub_key","wb") as f:
         f.write(auth_node_dilithium_public_key)
-    
 
     loop.run_until_complete(dht_handler.dht_node._refresh_table())
 
@@ -358,7 +354,6 @@ if __name__ == "__main__":
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
 
     dht_ready = threading.Event()
     dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,),daemon=True)
