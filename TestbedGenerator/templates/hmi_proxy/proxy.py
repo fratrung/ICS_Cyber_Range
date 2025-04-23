@@ -70,7 +70,6 @@ print("Starting HMI's Proxy..")
 
 did_document_delays = []
 compute_symmetric_key_delays = []
-#sign_sym_key_delay = []
 
 
 dht_handler = DHTHandler()
@@ -253,11 +252,9 @@ def main():
             print("\nSending the following packet: ")
             pkt.show2()
             if len(pkt) > 1400:
-                # Se il pacchetto è più grande dell'MTU, frammentalo
                 print(f"Pacchetto troppo grande ({len(pkt)} bytes), frammentato.")
                 frags = fragment(pkt, fragsize=1400)  # 28 byte per l'header IP e ICMP
 
-                # Invia ogni frammento separatamente
                 for frag in frags:
                     send(frag)
             else:
@@ -330,7 +327,6 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
     with open("auth_node_pub_key","wb") as f:
         f.write(auth_node_dilithium_public_key)
     
-    
     loop.run_until_complete(dht_handler.dht_node._refresh_table())
     
     dht_ready.set()
@@ -345,7 +341,6 @@ if __name__ == "__main__":
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
-    
 
     dht_ready = threading.Event()
     dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,),daemon=True)
