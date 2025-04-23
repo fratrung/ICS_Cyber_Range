@@ -1,5 +1,5 @@
 """
-Proxy 1 - PLC
+Proxy - PLC
 """
 from scapy.all import *
 from Crypto.Cipher import AES
@@ -11,8 +11,6 @@ import crypto
 import json
 import sys
 import threading
-#sys.path.append(os.path.join(os.path.dirname(__file__), 'dilithium'))
-
 sys.path.append(os.path.join(os.path.dirname(__file__), 'kyberpy'))
 from kyberpy import kyber 
 
