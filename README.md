@@ -1,4 +1,4 @@
-# ICS_Cyber_Range
+# Industrial Control System Cyber Range
 
 ## Overview
 
