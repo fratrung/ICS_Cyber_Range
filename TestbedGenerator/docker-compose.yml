@@ -7,7 +7,7 @@ networks:
     name: network1
 services:
   central-server:
-    build: ./server
+    build: ./issuer_node
     networks:
       network1:
         ipv4_address: 172.29.0.2
