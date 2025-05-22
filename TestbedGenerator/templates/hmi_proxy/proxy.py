@@ -290,7 +290,7 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
     loop.run_until_complete(dht_handler.start_dht_service(5000))
 
-    dht_handler.generate_did_iiot(id_service="main-service",service_type="PLC",service_endpoint=device_ip)
+    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
     kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
     dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
     
@@ -311,7 +311,7 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
     loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
     loop.run_until_complete(asyncio.sleep(10))
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
-    print("[PLC's Proxy] - Verifiable Credential obtained from Issuer Node") 
+    print("[HMI's Proxy] - Verifiable Credential obtained from Issuer Node") 
     
     start_t = time.time()
     authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
