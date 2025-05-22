@@ -150,7 +150,7 @@ def generate_compose(num_hmi, num_plc):
                     for j in range(1, num_plc + 1) 
                 ])
                 + ''.join([
-                    f"ip route add 172.29.0.{k + 3} via 172.29.0.{k + 62} && "
+                    f"ip route add 172.29.0.{k + 2} via 172.29.0.{k + 62} && "
                     for k in range(1, num_hmi + 1)  if k != i
                 ]) +
                 f"cd scripts && " +
