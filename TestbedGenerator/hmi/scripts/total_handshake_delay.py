@@ -33,7 +33,7 @@ for i in range(1,int(number_of_plc_proxy)+1):
     stop = time.time()
     delay = stop - start
     delays.append(delay)
-    print(f"{plc_address} Handshake delay: {delay}")
+    print(f"{plc_address} Handshake latency: {delay}")
     #read one coil just to test connection, but it's not measured
     r = client.read_coils(0, 1)
     client.close()
