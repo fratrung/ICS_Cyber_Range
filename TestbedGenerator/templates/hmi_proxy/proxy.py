@@ -84,10 +84,7 @@ synlist = []
 retr_counter = 0
 tot_counter = 0
 
-def main():
-
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+def main(loop):
 
     def packet_handler(packet):
         print('\n\nPacket received:')
@@ -156,7 +153,10 @@ def main():
                     did_suffix = dht_utils.extract_did_suffix(did)
 
                     start = time.time()
-                    did_document_record_sender = loop.run_until_complete(dht_handler.get_record_from_DHT(key=did_suffix))
+                    did_document_record_sender = asyncio.run_coroutine_threadsafe(
+                        dht_handler.get_record_from_DHT(key=did_suffix),
+                        loop
+                    ).result(timeout=0.7)
                     stop = time.time()
                     retriving_did_document_delay = stop - start
 
@@ -283,10 +283,11 @@ def main():
 
 
 
-def dht_service(dht_handler:DHTHandler,proxy_ip):
+def dht_service(dht_handler:DHTHandler, proxy_ip, loop_holder):
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
+    loop_holder['loop'] = loop
 
     loop.run_until_complete(dht_handler.start_dht_service(5000))
 
@@ -339,9 +340,8 @@ def dht_service(dht_handler:DHTHandler,proxy_ip):
 
 if __name__ == "__main__":
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
+    loop_holder = {}
+    
     dht_ready = threading.Event()
     dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,),daemon=True)
     dht_service_thread.start()
@@ -363,6 +363,6 @@ if __name__ == "__main__":
         nodes.extend(bucket.get_nodes())
         
     print(f"\nBuckets:{nodes}")
-
-    main()
+    loop = loop_holder['loop']
+    main(loop)
 
