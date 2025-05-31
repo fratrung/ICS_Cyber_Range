@@ -292,8 +292,8 @@ def dht_service(dht_handler:DHTHandler, proxy_ip, loop_holder):
     loop.run_until_complete(dht_handler.start_dht_service(5000))
 
     dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
-    kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
-    dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
+    #kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
+    #dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
     
     if (str(proxy_ip),5000) in bootstrap_nodes:
         loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.2",5000)]))
@@ -343,7 +343,7 @@ if __name__ == "__main__":
     loop_holder = {}
     
     dht_ready = threading.Event()
-    dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,),daemon=True)
+    dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,loop_holder,),daemon=True)
     dht_service_thread.start()
 
     dht_ready.wait()

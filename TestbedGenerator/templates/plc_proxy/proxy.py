@@ -377,7 +377,7 @@ if __name__ == "__main__":
         
     print(f"\nBuckets: {nodes}")
     loop = loop_holder['loop']
-    main()
+    main(loop)
     
 
 
