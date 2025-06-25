@@ -17,13 +17,13 @@ timeout = False
 samples = 0
 confidence_level = 0.95
 
-number_of_plc_proxy = 20
+number_of_plc_proxy = 25
 
 total_request_for_each_plc_proxy = int(n)/int(number_of_plc_proxy)
 print(total_request_for_each_plc_proxy)
 
 
-print("Availability Check of PLCs")
+print("Contacting all PLC")
 
 for i in range(1,int(number_of_plc_proxy)+1):
     plc_address = f"172.29.0.{121 + i}"
@@ -33,7 +33,7 @@ for i in range(1,int(number_of_plc_proxy)+1):
     stop = time.time()
     delay = stop - start
     delays.append(delay)
-    print(f"{plc_address} Handshake latency: {delay}")
+    print(f"{plc_address} Handshake delay: {delay}")
     #read one coil just to test connection, but it's not measured
     r = client.read_coils(0, 1)
     client.close()
@@ -52,7 +52,7 @@ for i in range(1,int(number_of_plc_proxy)+1):
         stop = time.time()
         delay = stop - start
         delays.append(delay)
-        print(f"Handshake latency: {delay})
+        print(delay)
         #read one coil just to test connection, but it's not measured
         r = client.read_coils(0, 1)
         client.close()

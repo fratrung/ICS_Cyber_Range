@@ -2,8 +2,9 @@ fastapi
 pydantic
 uvicorn
 cryptography
-pycryptodome == 3.14.1
+pycryptodome == 3.23.0
 numpy
 PyJWT
 umsgpack
 requests
+httpx

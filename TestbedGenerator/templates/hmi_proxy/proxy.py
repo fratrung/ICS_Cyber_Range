@@ -21,8 +21,10 @@ import did_iiot_dht.utils as dht_utils
 import jwt.utils as jwt_utils
 import asyncio
 import time
-import socket
+import base64
 import random
+import hashlib
+
 
 
 def get_container_ip():
@@ -63,7 +65,7 @@ proxy_ip = get_container_ip()
 bootstrap_nodes = [("172.29.0.181",5000),("172.29.0.63",5000),("172.29.0.2",5000)] #entry nodes for DHT 
 
 if (str(proxy_ip),5000) not in bootstrap_nodes:
-    random_number = random.randint(3,10)
+    random_number = random.randint(20,35)
     time.sleep(random_number)
 
 print("Starting HMI's Proxy..")
@@ -85,7 +87,16 @@ retr_counter = 0
 tot_counter = 0
 
 def main(loop):
-
+    '''
+    authoritative_node_did_doc_record= asyncio.run_coroutine_threadsafe(
+        dht_handler.dht_node.get_fallback("did:iiot:status-list"),
+        loop
+    ).result(timeout=0.7)
+    authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
+    auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
+    status_list = auth_node_did_document['status_list']
+    print(f"Status-list : {status_list}")
+    '''
     def packet_handler(packet):
         print('\n\nPacket received:')
         
@@ -142,15 +153,70 @@ def main(loop):
             # If the packet is addressed to the HMI and has a SYN
             if pkt[TCP].flags & 2 and pkt[IP].dst == device_ip:
                 if len(full_payload) > 8:
-                    print(f"\n\n FULL PAYLOAD:{full_payload}\n\n")
+                    #print(f"\n\n FULL PAYLOAD:{full_payload}\n\n")
                     verifiable_credential = full_payload[3188:]
-                    print(verifiable_credential)
+                    #print(verifiable_credential)
                     jwt_verifiable_credential_json = json.loads(verifiable_credential)
                     jwt_vc = jwt_verifiable_credential_json['verifiable-credential']
                     jwt_array = jwt_vc.split(".")
                     vc_sender_payload = json.loads(jwt_utils.base64url_decode(jwt_array[1]))
                     did = vc_sender_payload['sub']
                     did_suffix = dht_utils.extract_did_suffix(did)
+                    
+
+                    hashed_jwt_vc = base64.urlsafe_b64encode(hashlib.sha256(jwt_vc.encode()).digest()).decode()
+                    #Get status list form DHT 
+                    start_t_status_list = time.time()
+                    dht_record_status_list = asyncio.run_coroutine_threadsafe(
+                        dht_handler.dht_node.get("did:iiot:status-list"),
+                        loop
+                    ).result(timeout=5)
+                    end_t_status_list = time.time()
+
+                   
+                    
+                    if not dht_record_status_list:
+                        print("Errore , status list non trovata ")
+                    status_list_raw = dht_record_status_list[12+2420:]
+                    status_list = dht_utils.decode_did_document(status_list_raw)['status_list']
+                    print(status_list)
+                    is_valid_jwt_vc = False
+                    jwt_vc_status_list = None
+                    for elem in status_list:
+                        if elem['did'] == did:
+                            jwt_vc_status_list = elem
+                            is_valid_jwt_vc = jwt_vc_status_list['valid']
+                            break
+                    fallback = False
+                    if jwt_vc_status_list is None or is_valid_jwt_vc is None or len(status_list) == 0:
+                        fallback = True
+                        print("fallback")
+                        start_t_status_list_f = time.time()
+                        dht_record_status_list = asyncio.run_coroutine_threadsafe(
+                            dht_handler.dht_node.get_fallback("did:iiot:status-list"),
+                            loop
+                        ).result(timeout=5)
+                        end_t_status_list_f = time.time()
+                        status_list_raw = dht_record_status_list[12+2420:]
+                        status_list = dht_utils.decode_did_document(status_list_raw)['status_list']
+                        print(status_list)
+                        for elem in status_list:
+                            if elem['did'] == did:
+                                jwt_vc_status_list = elem
+                                is_valid_jwt_vc = jwt_vc_status_list['valid']
+                                break
+
+                    if jwt_vc_status_list is None or is_valid_jwt_vc == False:
+                        print("Error: VC in status list not match")
+                        packet.drop()
+                    
+                    if jwt_vc_status_list["jwt-vc"] != hashed_jwt_vc:
+                        print("Error: VC in status list not match")
+                        packet.drop()
+                    
+                    #retrieve hash(dilithium_public_key) in jwt-vc in the status list
+                            
+                    
 
                     start = time.time()
                     did_document_record_sender = asyncio.run_coroutine_threadsafe(
@@ -158,9 +224,16 @@ def main(loop):
                         loop
                     ).result(timeout=0.7)
                     stop = time.time()
+
+
                     retriving_did_document_delay = stop - start
 
-                    print(f"\n\nDHT LATENCY : {retriving_did_document_delay}\n\n")
+                    if fallback:
+                        retriving_status_list = (end_t_status_list - start_t_status_list ) + (end_t_status_list_f - start_t_status_list_f)
+                    else:
+                        retriving_status_list = (end_t_status_list - start_t_status_list )
+                    
+                    print(f"\n\nDHT LATENCY : {retriving_did_document_delay + retriving_status_list}\n\n")
 
 
                     print(f"DID DOCUMENT did:iiot:{did_suffix}!")
@@ -171,6 +244,9 @@ def main(loop):
                     ver_method_dilithium_sender = did_document_sender['verificationMethod'][0]
                     sender_dilithium_jwk_pub_key = ver_method_dilithium_sender['publicKeyJwk']['x']
                     sender_dilithium_public_key = dht_utils.base64_decode_publickey(sender_dilithium_jwk_pub_key) 
+                    
+                    hash_sender_dilithium_public_key = hashlib.sha256(sender_dilithium_public_key).digest()
+                    #compare hash of public key in status list and the retrived dilithium public key form the did document 
 
                     start_compute_sym_key = time.time()
                     keys[src_ip], sign_key = crypto.compute_symmetric_key(full_payload, kyber_private_key,auth_node_dilithium_public_key,sender_dilithium_public_key)
@@ -193,12 +269,14 @@ def main(loop):
                         print("Signature not verified")
 
 
-                    with open("retrieve_did_document.txt","w") as f:
+                    with open("retrieve_did_document.txt","a") as f:
                         f.write(f"{retriving_did_document_delay}\n")
 
-                    with open("compute_sym_key.txt","w") as f:
+                    with open("compute_sym_key.txt","a") as f:
                         f.write(f"{compute_symmetric_key_delay}\n")
-
+                    
+                    with open("retrieve_status_list.txt","a") as f:
+                        f.write(f"{retriving_status_list}\n")
 
                 else:
                     print(f"ARRIVATO UN PACCHETTO SYN VUOTO!")
@@ -283,18 +361,18 @@ def main(loop):
 
 
 
-def dht_service(dht_handler:DHTHandler, proxy_ip, loop_holder):
+def dht_service(dht_handler:DHTHandler,proxy_ip,loop_holder):
 
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     loop_holder['loop'] = loop
-
     loop.run_until_complete(dht_handler.start_dht_service(5000))
 
-    dht_handler.generate_did_iiot(id_service="main-service",service_type="HMI",service_endpoint=device_ip)
+    dht_handler.generate_did_iiot(id_service="main-service",service_type="DecentralizedNode",service_endpoint=device_ip)
     #kyber_private_key = dht_handler.kyber_key_manager.get_private_key("k1")
     #dilithium_private_key = dht_handler.dilith_key_manager.get_private_key("k0")
-    
+    loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.2",5000)]))
+
     if (str(proxy_ip),5000) in bootstrap_nodes:
         loop.run_until_complete(dht_handler.dht_node.bootstrap([("172.29.0.2",5000)]))
         while True:
@@ -305,32 +383,46 @@ def dht_service(dht_handler:DHTHandler, proxy_ip, loop_holder):
 
             if len(all_nodes) >= 2:
                 break
-            loop.run_until_complete(asyncio.sleep(2))
+            loop.run_until_complete(asyncio.sleep(0.5))
     else:
         loop.run_until_complete(dht_handler.dht_node.bootstrap(bootstrap_nodes))
 
+    #loop.run_until_complete(asyncio.sleep(1))
     loop.run_until_complete(dht_handler.insert_did_document_in_the_DHT())
-    loop.run_until_complete(asyncio.sleep(10))
+
+    
+        
+    loop.run_until_complete(asyncio.sleep(100))
+    
+    if (str(proxy_ip),5000) not in bootstrap_nodes:
+        random_number = random.randint(8,10)
+        loop.run_until_complete(asyncio.sleep(random_number))
+
     loop.run_until_complete(dht_handler.get_vc_from_authoritative_node())
     print("[HMI's Proxy] - Verifiable Credential obtained from Issuer Node") 
+    #loop.run_until_complete(asyncio.sleep(5))
     
-    start_t = time.time()
-    authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="vc-issuer"))
-    stop_t = time.time()
-    print(f"Issuer Node DID Document retrieve time: {stop_t - start_t}")
+    #start_t = time.time()
+    #authoritative_node_did_doc_record = loop.run_until_complete(dht_handler.get_record_from_DHT(key="did:iiot:status-list"))
+    #stop_t = time.time()
+    #print(f"Issuer Node DID Document retrieve time: {stop_t - start_t}")
 
-    authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
-    auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
-    var_method = auth_node_did_document['verificationMethod'][0]
-    auth_node_jwk_pub_key = var_method['publicKeyJwk']['x']
-    auth_node_dilithium_public_key = dht_utils.base64_decode_publickey(auth_node_jwk_pub_key)
+    #authoritative_node_did_doc_raw = authoritative_node_did_doc_record[12+2420:]
+    #auth_node_did_document = dht_utils.decode_did_document(authoritative_node_did_doc_raw)
+    #var_method = auth_node_did_document['verificationMethod'][0]
+    #auth_node_jwk_pub_key = var_method['publicKeyJwk']['x']
+    #auth_node_dilithium_public_key = dht_utils.base64_decode_publickey(auth_node_jwk_pub_key)
 
-    with open("auth_node_pub_key","wb") as f:
-        f.write(auth_node_dilithium_public_key)
-    
+    #with open("auth_node_pub_key","wb") as f:
+    #    f.write(auth_node_dilithium_public_key)
+
+    loop.run_until_complete(asyncio.sleep(2))    
     loop.run_until_complete(dht_handler.dht_node._refresh_table())
+    loop.run_until_complete(asyncio.sleep(2))    
+
     
     dht_ready.set()
+
 
     loop.run_forever()
 
@@ -341,9 +433,9 @@ def dht_service(dht_handler:DHTHandler, proxy_ip, loop_holder):
 if __name__ == "__main__":
 
     loop_holder = {}
-    
+
     dht_ready = threading.Event()
-    dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,loop_holder,),daemon=True)
+    dht_service_thread = threading.Thread(target=dht_service,args=(dht_handler,proxy_ip,loop_holder),daemon=True)
     dht_service_thread.start()
 
     dht_ready.wait()
@@ -354,7 +446,7 @@ if __name__ == "__main__":
     with open("vc.json", "r") as f:
         proxy_verifiable_credential = json.loads(f.read())
 
-    with open("auth_node_pub_key","rb") as f:
+    with open("issuer_node_public_key.txt","rb") as f:
         auth_node_dilithium_public_key = f.read()
     
     routing_table_kademlia = dht_handler.dht_node.protocol.router
