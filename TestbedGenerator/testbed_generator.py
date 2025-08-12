@@ -153,9 +153,8 @@ def generate_compose(num_hmi, num_plc,cpus,cm4_ram):
                 f'ip route add {proxy_ip} dev eth0 &&'
                 f'ip route add 172.29.0.0/24 via {proxy_ip} && '
                 f'tail -f /dev/null"'
-                #f'python3 /scripts/read_coil_requests.py 172.29.0.{i + 121} && tail -f /dev/null"' #measure round trip time of read coil request to a specific PLC 
-                #f'python3 /scripts/random_handshake_and_read_coil_requests.py && tail -f /dev/null"' #measure latency(handshake + read coil operation) by contacting random PLC
-                #f'python3 /scripts/testing_proxy_availability.py && tail -f /dev/null"'
+                #f'python3 /scripts/read_coil_requests.py 172.29.0.{i + 121} && tail -f /dev/null"' # Measure round trip time of read coil request to a specific PLC 
+                #f'python3 /scripts/random_handshake_and_read_coil_requests.py && tail -f /dev/null"' # Measure latency(handshake + read coil operation) by contacting random PLC
             )
         }
 
@@ -255,7 +254,7 @@ def main():
                         openplc_service_started += 1
 
                 else:
-                    print("Login Error: ",login_response.text)
+                    print("Login Error: ", login_response.text)
         
         print(f"OpenPLC's Service Started: {openplc_service_started}")
         

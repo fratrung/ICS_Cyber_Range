@@ -9,8 +9,6 @@
 A cyber range is a virtual environment that allows researchers, developers, and security professionals to safely simulate, test, and train in cybersecurity. It provides a realistic, isolated setup for experimenting with network configurations, attack simulations, and security defenses without impacting real-world systems.
 
 ### Network Components
-
-
 - **HMI (Human-Machine Interface)**: The interface for monitoring and controlling the PLC.
 - **PLC (Programmable Logic Controller)**: Simulated using OpenPLC to control industrial processes.
 - **Proxies**: Each device in the network (HMI and PLC) is assigned its own proxy to handle secure communication. The proxies identification within the industrial network is managed through did:iiot. However, they operate as peers within the DHT network.
@@ -18,6 +16,8 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 - **Issuer Node**: This node is responsible for generating Verifiable Credentials in JWT format and distributing them across the network. It is only activated when a new device needs to be added to the industrial network. The Issuer Node responds to issuance requests manually triggered by an operator, and once the operation is completed, it is deactivated. Communication between nodes within the network, including secure communication and key exchange is autonomously and decentralized, handled by the proxies.
 - **Attacker**: A simulated attacker to test the security of the system.
 
+
+![Infrastructure Simulated](img/simulator_scheme.png)
 
 ## Getting Started
 
@@ -52,6 +52,8 @@ Start the testing script:
 cd scripts
 python3 client.py
 ```
+
+## Experiments
 
 ## Acknowledgements
 - [OpenPLC] (https://github.com/thiagoralves/OpenPLC_v3)

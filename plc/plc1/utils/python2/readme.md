@@ -1,1 +1,0 @@
-This folder has a copy of the latest python2.7 available on Cygwin. This package is not maintained anymore on current Cygwin releases (see https://sourceware.org/pipermail/cygwin/2023-July/253944.html) and therefore could break at any time. This is a temporary work-around.
