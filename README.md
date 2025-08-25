@@ -17,7 +17,7 @@ A cyber range is a virtual environment that allows researchers, developers, and 
 - **Attacker**: A simulated attacker to test the security of the system.
 
 
-![Infrastructure Simulated](img/simulator_scheme.png)
+![Infrastructure Simulated](img/infra_v2.png)
 
 ## Getting Started
 
