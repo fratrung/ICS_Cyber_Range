@@ -54,7 +54,7 @@ python3 client.py
 ```
 
 ## Experiments
-[WIP]
+[Work in progress]
 
 ## Acknowledgements
 - [OpenPLC] (https://github.com/thiagoralves/OpenPLC_v3)
