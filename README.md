@@ -62,3 +62,7 @@ python3 client.py
 - [did:iiot] (https://github.com/fratrung/did-iiot)
 - [did-iiot-dht] (https://github.com/fratrung/did-iiot-dht)
 - [AuthKademlia] (https://github.com/fratrung/AuthKademlia)
+## Reference
+
+This repository has been developed as part of the research work published in the following article:  
+DOI: [https://doi.org/10.1016/j.jisa.2025.104199](https://doi.org/10.1016/j.jisa.2025.104199)  
